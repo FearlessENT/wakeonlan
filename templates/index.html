@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wake-on-LAN</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        h2 {
+            color: #34495e;
+        }
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #3498db;
+            color: #fff;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background-color: #fff;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .pc-info {
+            flex-grow: 1;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .wake-btn, .delete-btn {
+            min-width: 60px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        .wake-btn {
+            background-color: #2ecc71;
+            color: #fff;
+        }
+        .wake-btn:hover {
+            background-color: #27ae60;
+        }
+        .delete-btn {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+        .wake-all-btn {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .success {
+            color: #fff;
+            background-color: #2ecc71;
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Wake-on-LAN</h1>
+    <h2>Add a new PC</h2>
+    <form action="{{ url_for('add_pc') }}" method="post">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        <label for="mac">MAC Address:</label>
+        <input type="text" id="mac" name="mac" required>
+        <button type="submit">Add PC</button>
+    </form>
+    <h2>Saved PCs</h2>
+    <ul id="pc-list">
+    {% for pc in pcs %}
+        <li>
+            <span class="pc-info">
+                <strong>{{ pc.name }}</strong> ({{ pc.mac }})
+            </span>
+            <span class="action-buttons">
+                <button class="wake-btn" onclick="wakePc('{{ pc.mac }}', this)">Wake</button>
+                <button class="delete-btn" onclick="deletePc('{{ pc.mac }}', this)">Delete</button>
+            </span>
+        </li>
+    {% endfor %}
+    </ul>
+    <button class="wake-all-btn" onclick="wakeAll(this)">Wake All</button>
+
+    <script>
+        function showSuccess(button, originalText) {
+            const originalBg = button.style.backgroundColor;
+            button.textContent = '✓';
+            button.classList.add('success');
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('success');
+            }, 1000);
+        }
+
+        function wakePc(mac, button) {
+            const originalText = button.textContent;
+            button.textContent = '...';
+            button.disabled = true;
+
+            fetch(`/wake/${mac}`)
+                .then(response => response.json())
+                .then(data => {
+                    button.disabled = false;
+                    showSuccess(button, originalText);
+                });
+        }
+
+        function deletePc(mac, button) {
+            const originalText = button.textContent;
+            button.textContent = '...';
+            button.disabled = true;
+
+            fetch(`/delete/${mac}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const li = button.closest('li');
+                        li.style.animation = 'fadeInOut 0.5s';
+                        setTimeout(() => li.remove(), 500);
+                    } else {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                    }
+                });
+        }
+
+        function wakeAll(button) {
+            const originalText = button.textContent;
+            button.textContent = 'Waking...';
+            button.disabled = true;
+
+            fetch('/wake_all')
+                .then(response => response.json())
+                .then(data => {
+                    button.disabled = false;
+                    showSuccess(button, originalText);
+                });
+        }
+    </script>
+</body>
+</html>
